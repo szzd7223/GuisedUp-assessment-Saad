@@ -11,10 +11,12 @@ flowchart LR
   M[Expo React Native Feed] -->|Sanctum bearer token| L[Laravel API]
   L -->|posts, interactions, ranked SQL| P[(PostgreSQL + pgvector)]
   L -->|POST /embed| E[FastAPI embedding service]
+  E -->|text-embedding-004 64-dim| G[Google Gemini API]
+  G -->|64-dim vector| E
   E -->|64-dim vector| L
 ```
 
-Laravel owns authentication, validation, ranking, and the public API. FastAPI owns the embedding adapter. PostgreSQL is both the transactional store and vector database, avoiding a second data store and synchronization pipeline.
+Laravel owns authentication, validation, ranking, and the public API. The FastAPI embedding service retrieves real semantic vectors from the Google Gemini API (or falls back to local deterministic hash embedding). PostgreSQL is both the transactional store and vector database, avoiding a second data store and synchronization pipeline.
 
 ## Schema and indexes
 
@@ -60,7 +62,13 @@ There is no likes, shares, comments, or follower-count feature in this score.
 
 ## Embeddings and trade-offs
 
-The included FastAPI service produces a deterministic normalized 64-dimension hash embedding. It is free, reproducible, fast, and suitable for demonstrating storage, cosine search, and API flow; it is **not semantically equivalent to a trained embedding model**. The `EmbeddingClient` service boundary means production can replace only FastAPI's adapter with OpenAI `text-embedding-3-small` (or a locally hosted sentence-transformer), migrate to that dimension, backfill post vectors, and keep all public Laravel contracts unchanged.
+The **FastAPI embedding service** leverages the **Google Gemini API** (`text-embedding-004`) to generate real, state-of-the-art semantic embeddings. Using the `outputDimensionality` parameter, it retrieves exactly **64-dimensional** embeddings directly, which fit our existing PostgreSQL schema without altering table definitions.
+
+If `GEMINI_API_KEY` is not mapped to the container environment, or if the API call fails, the FastAPI service automatically falls back to:
+1. A local python-only deterministic 64-dimension token hash.
+2. A local PHP-only deterministic character hashing fallback.
+
+This encapsulation keeps the Laravel backend completely independent of the choice of embedding provider, while keeping vector calculation modular and centralized within the dedicated embeddings service container.
 
 Using pgvector keeps writes transactional and eliminates dual-write drift. An external vector DB would be considered when scale or independent retrieval tuning outweighs this operational simplicity.
 

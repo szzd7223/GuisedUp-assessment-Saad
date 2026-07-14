@@ -19,6 +19,8 @@ services:
     build: ./backend/embedding-service
     ports:
       - '8001:8001'
+    env_file:
+      - ./backend/.env
 
 volumes:
   postgres-data:
