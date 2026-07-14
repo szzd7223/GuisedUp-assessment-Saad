@@ -1,8 +1,7 @@
--- D1: Top ten users by all interactions received in the last seven days.
+-- D1: Top ten users by all interactions performed in the last seven days.
 SELECT u.id AS user_id, u.name, u.email, COUNT(i.id) AS interaction_count
 FROM users u
-JOIN posts p ON p.user_id = u.id
-JOIN interactions i ON i.post_id = p.id
+JOIN interactions i ON i.user_id = u.id
 WHERE i.created_at >= NOW() - INTERVAL '7 days'
 GROUP BY u.id, u.name, u.email
 ORDER BY interaction_count DESC
@@ -13,7 +12,7 @@ WITH relationship_strength AS (
   SELECT p.user_id AS author_id, COUNT(*) AS interaction_count
   FROM interactions i
   JOIN posts p ON p.id = i.post_id
-  WHERE i.user_id = :user_id AND p.user_id <> :user_id
+  WHERE i.user_id = 1 AND p.user_id <> 1
   GROUP BY p.user_id
 )
 SELECT p.*, rs.interaction_count

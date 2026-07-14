@@ -51,8 +51,8 @@ class FeedRankingService
         return Post::query()->with('author:id,name')
             ->select('posts.*')
             ->selectRaw(
-                '1 - (embedding <=> :query::vector) AS similarity,
-                EXISTS(SELECT 1 FROM interactions WHERE interactions.post_id = posts.id AND interactions.user_id = :viewer_id AND interactions.type = "reaction") AS has_reacted',
+                "1 - (embedding <=> :query::vector) AS similarity,
+                EXISTS(SELECT 1 FROM interactions WHERE interactions.post_id = posts.id AND interactions.user_id = :viewer_id AND interactions.type = 'reaction') AS has_reacted",
                 [
                     'query' => $vector,
                     'viewer_id' => $viewer->id

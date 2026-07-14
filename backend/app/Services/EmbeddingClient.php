@@ -12,12 +12,20 @@ class EmbeddingClient
     {
         try {
             $response = Http::timeout(3)->post(config('services.embeddings.url').'/embed', ['text' => $text]);
-            if ($response->successful() && count($response->json('embedding', [])) === self::DIMENSIONS) return $response->json('embedding');
+            if ($response->successful() && count($response->json('embedding', [])) === self::DIMENSIONS) {
+                return $this->normalize($response->json('embedding'));
+            }
         } catch (\Throwable) { /* Local fallback keeps the assessment runnable without the service. */ }
         return $this->fallback($text);
     }
 
     public function literal(array $embedding): string { return '['.implode(',', array_map(fn ($v) => sprintf('%.8F', $v), $embedding)).']'; }
+
+    private function normalize(array $vector): array
+    {
+        $magnitude = sqrt(array_sum(array_map(fn ($v) => $v * $v, $vector))) ?: 1.0;
+        return array_map(fn ($v) => round($v / $magnitude, 8), $vector);
+    }
 
     private function fallback(string $text): array
     {

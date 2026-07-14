@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
@@ -130,8 +131,18 @@ export default function HomeScreen({ onNavigateToPost }) {
   const [more, setMore] = useState(true);
   const [error, setError] = useState('');
   const [filterMode, setFilterMode] = useState('ranked'); // ranked, authentic, raw
+  const loadingRef = useRef(false);
+
+  // Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   const loadFeed = useCallback(async (next = 1, isRefreshing = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     try {
       if (isRefreshing) {
         setRefreshing(true);
@@ -144,7 +155,12 @@ export default function HomeScreen({ onNavigateToPost }) {
       if (!response.ok) throw new Error('Could not load connections feed.');
       const json = await response.json();
 
-      setPosts(previous => next === 1 ? json.data : [...previous, ...json.data]);
+      setPosts(previous => {
+        if (next === 1) return json.data;
+        const existingIds = new Set(previous.map(p => p.id));
+        const newPosts = (json.data || []).filter(p => !existingIds.has(p.id));
+        return [...previous, ...newPosts];
+      });
       setPage(next);
       setMore(Boolean(json.next_page_url));
     } catch (e) {
@@ -154,12 +170,41 @@ export default function HomeScreen({ onNavigateToPost }) {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      loadingRef.current = false;
     }
   }, [token]); // depend on token, not apiFetch, to prevent infinite loops
 
   useEffect(() => {
     loadFeed(1);
   }, [loadFeed]);
+
+  const handleSearch = async () => {
+    const term = searchQuery.trim();
+    if (!term) {
+      handleClearSearch();
+      return;
+    }
+    try {
+      setSearchLoading(true);
+      setSearchError('');
+      setHasSearched(true);
+      const response = await apiFetch(`/search?q=${encodeURIComponent(term)}`);
+      if (!response.ok) throw new Error('Search request failed.');
+      const json = await response.json();
+      setSearchResults(json.data || []);
+    } catch (e) {
+      setSearchError(e.message);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setHasSearched(false);
+    setSearchError('');
+  };
 
   const react = async (id) => {
     try {
@@ -179,6 +224,9 @@ export default function HomeScreen({ onNavigateToPost }) {
 
   // Filter & Sort Logic Client-side
   const getFilteredPosts = () => {
+    if (hasSearched) {
+      return searchResults;
+    }
     let result = [...posts];
     if (filterMode === 'authentic') {
       result.sort((a, b) => parseFloat(b.authenticity_score) - parseFloat(a.authenticity_score));
@@ -211,73 +259,117 @@ export default function HomeScreen({ onNavigateToPost }) {
           </View>
         </View>
 
-        {/* Quick Posting Desk Anchor */}
-        <Pressable style={styles.quickPost} onPress={onNavigateToPost}>
-          <Text style={styles.quickPostText}>Share a moment, not metrics...</Text>
-          <Text style={styles.quickPostIcon}>✍️</Text>
-        </Pressable>
-
-        {/* Filter Chips */}
-        <View style={styles.filterBar}>
-          <Pressable
-            style={[styles.filterChip, filterMode === 'ranked' && styles.filterChipActive]}
-            onPress={() => setFilterMode('ranked')}
-          >
-            <Text style={[styles.filterChipText, filterMode === 'ranked' && styles.filterChipTextActive]}>
-              🧠 Relevance
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.filterChip, filterMode === 'authentic' && styles.filterChipActive]}
-            onPress={() => setFilterMode('authentic')}
-          >
-            <Text style={[styles.filterChipText, filterMode === 'authentic' && styles.filterChipTextActive]}>
-              🛡️ Authentic First
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.filterChip, filterMode === 'raw' && styles.filterChipActive]}
-            onPress={() => setFilterMode('raw')}
-          >
-            <Text style={[styles.filterChipText, filterMode === 'raw' && styles.filterChipTextActive]}>
-              ⏰ Recency
-            </Text>
-          </Pressable>
+        {/* Search Bar */}
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            placeholder="Search concepts or posts..."
+            placeholderTextColor="#827E94"
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
+          {searchQuery ? (
+            <Pressable onPress={handleClearSearch} style={styles.clearBtn}>
+              <Text style={styles.clearBtnText}>✕</Text>
+            </Pressable>
+          ) : null}
         </View>
+
+        {!hasSearched ? (
+          <>
+            {/* Quick Posting Desk Anchor */}
+            <Pressable style={styles.quickPost} onPress={onNavigateToPost}>
+              <Text style={styles.quickPostText}>Share a moment, not metrics...</Text>
+              <Text style={styles.quickPostIcon}>✍️</Text>
+            </Pressable>
+
+            {/* Filter Chips */}
+            <View style={styles.filterBar}>
+              <Pressable
+                style={[styles.filterChip, filterMode === 'ranked' && styles.filterChipActive]}
+                onPress={() => setFilterMode('ranked')}
+              >
+                <Text style={[styles.filterChipText, filterMode === 'ranked' && styles.filterChipTextActive]}>
+                  🧠 Relevance
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, filterMode === 'authentic' && styles.filterChipActive]}
+                onPress={() => setFilterMode('authentic')}
+              >
+                <Text style={[styles.filterChipText, filterMode === 'authentic' && styles.filterChipTextActive]}>
+                  🛡️ Authentic First
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.filterChip, filterMode === 'raw' && styles.filterChipActive]}
+                onPress={() => setFilterMode('raw')}
+              >
+                <Text style={[styles.filterChipText, filterMode === 'raw' && styles.filterChipTextActive]}>
+                  ⏰ Recency
+                </Text>
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <View style={styles.searchResultsHeader}>
+            <Text style={styles.searchResultsTitle}>Conceptual Search Results</Text>
+            <Pressable style={styles.backToFeedPill} onPress={handleClearSearch}>
+              <Text style={styles.backToFeedPillText}>Back to Feed ✕</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {/* Main feed list */}
-      {error ? (
+      {error || searchError ? (
         <View style={styles.state}>
-          <Text style={styles.errorLabel}>⚠️ {error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => loadFeed(1)}>
+          <Text style={styles.errorLabel}>⚠️ {error || searchError}</Text>
+          <Pressable style={styles.retryButton} onPress={hasSearched ? handleSearch : () => loadFeed(1)}>
             <Text style={styles.retryText}>Try again</Text>
           </Pressable>
+          {hasSearched && (
+            <Pressable style={styles.secondaryButton} onPress={handleClearSearch}>
+              <Text style={styles.secondaryButtonText}>Back to Feed</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <FlatList
           data={currentPosts}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <PostCard post={item} onReact={react} />}
-          onEndReached={() => more && !loading && loadFeed(page + 1)}
+          onEndReached={() => !hasSearched && more && !loading && loadFeed(page + 1)}
           onEndReachedThreshold={0.5}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={['#4F46E5']}
-              tintColor="#4F46E5"
-            />
+            !hasSearched ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={['#4F46E5']}
+                tintColor="#4F46E5"
+              />
+            ) : undefined
           }
           ListEmptyComponent={
-            !loading && (
+            (!loading && !searchLoading) && (
               <View style={styles.state}>
-                <Text style={styles.emptyText}>No moments shared in this list yet.</Text>
+                <Text style={styles.emptyText}>
+                  {hasSearched ? 'No concepts matched your search.' : 'No moments shared in this list yet.'}
+                </Text>
+                {hasSearched && (
+                  <Pressable style={styles.clearSearchButton} onPress={handleClearSearch}>
+                    <Text style={styles.clearSearchButtonText}>Clear Search</Text>
+                  </Pressable>
+                )}
               </View>
             )
           }
           ListFooterComponent={
-            loading && (
+            (loading || searchLoading) && (
               <ActivityIndicator color="#4F46E5" style={styles.loader} />
             )
           }
@@ -526,5 +618,81 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginVertical: 20,
+  },
+  searchBar: {
+    marginTop: 8,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  clearBtn: {
+    padding: 4,
+  },
+  clearBtnText: {
+    fontSize: 14,
+    color: '#827E94',
+    fontWeight: '700',
+  },
+  searchResultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  searchResultsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  backToFeedPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+  },
+  backToFeedPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  clearSearchButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  clearSearchButtonText: {
+    color: '#4F46E5',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  secondaryButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: {
+    color: '#6366F1',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });

@@ -208,5 +208,48 @@ class DatabaseSeeder extends Seeder
                 Interaction::create(['user_id' => $arjun->id, 'post_id' => $post->id, 'type' => 'view']);
             }
         }
+
+        // --- D4 Seed: Spammer creating more than 20 posts in 24 hours ---
+        $spammer = User::factory()->create([
+            'name' => 'Ad Bot',
+            'email' => 'adbot@guisedup.test',
+            'password' => 'password'
+        ]);
+        
+        for ($i = 0; $i < 25; $i++) {
+            // Distribute within the last 24 hours
+            $createdAt = \Carbon\Carbon::now()->subMinutes($i * 45);
+            $spamText = "🔥 FREE CASH GIVEAWAY!! 🔥 Click link in bio to claim your free gift cards now! Tag 3 friends and follow for follow! #cash #win #giveaway " . $i;
+            Post::create([
+                'user_id'           => $spammer->id,
+                'text'              => $spamText,
+                'embedding'         => $embeddings->literal($embeddings->embed($spamText)),
+                'authenticity_score'=> $ranking->authenticity($spamText),
+                'created_at'        => $createdAt,
+                'updated_at'        => $createdAt,
+            ]);
+        }
+
+        // --- D3 Seed: Post viewed > 100 times but zero reactions ---
+        $viewedPostText = "I spent three hours this afternoon walking through the public gardens. The jasmine is in bloom, and the smell was everywhere. Just sat on a bench and watched families play. No phone, no work, just simple peace.";
+        $viewedPost = Post::create([
+            'user_id'           => $maya->id,
+            'text'              => $viewedPostText,
+            'embedding'         => $embeddings->literal($embeddings->embed($viewedPostText)),
+            'authenticity_score'=> $ranking->authenticity($viewedPostText),
+            'created_at'        => \Carbon\Carbon::now()->subDays(2),
+            'updated_at'        => \Carbon\Carbon::now()->subDays(2),
+        ]);
+
+        $allUsers = [$maya, $arjun, $kabir, $zara, $rohan, $priha, $leo, $dev];
+        for ($i = 0; $i < 105; $i++) {
+            $viewer = $allUsers[$i % count($allUsers)];
+            Interaction::create([
+                'user_id'    => $viewer->id,
+                'post_id'    => $viewedPost->id,
+                'type'       => 'view',
+                'created_at' => \Carbon\Carbon::now()->subDays(1)->subMinutes($i * 5),
+            ]);
+        }
     }
 }

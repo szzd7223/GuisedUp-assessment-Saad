@@ -65,7 +65,11 @@ export default function ProfileScreen() {
   const [avgScore, setAvgScore] = useState(0.95);
   const hasFetched = useRef(false); // prevent repeated fetch on re-renders
 
+  const profileLoadingRef = useRef(false); // prevent concurrent page fetches
+
   const fetchUserPosts = async (next = 1, isRefreshing = false) => {
+    if (profileLoadingRef.current) return;
+    profileLoadingRef.current = true;
     try {
       if (isRefreshing) {
         setRefreshing(true);
@@ -81,15 +85,24 @@ export default function ProfileScreen() {
       const json = await res.json();
       const myPosts = json.data || [];
 
-      setUserPosts(previous => next === 1 ? myPosts : [...previous, ...myPosts]);
+      let updatedPosts = [];
+      setUserPosts(previous => {
+        if (next === 1) {
+          updatedPosts = myPosts;
+        } else {
+          const existingIds = new Set(previous.map(p => p.id));
+          const newPosts = myPosts.filter(p => !existingIds.has(p.id));
+          updatedPosts = [...previous, ...newPosts];
+        }
+        return updatedPosts;
+      });
       setPage(next);
       setMore(Boolean(json.next_page_url));
 
       // Calculate average authenticity score based on all loaded posts
-      const allLoaded = next === 1 ? myPosts : [...userPosts, ...myPosts];
-      if (allLoaded.length > 0) {
-        const sum = allLoaded.reduce((acc, p) => acc + parseFloat(p.authenticity_score || 0), 0);
-        setAvgScore(sum / allLoaded.length);
+      if (updatedPosts.length > 0) {
+        const sum = updatedPosts.reduce((acc, p) => acc + parseFloat(p.authenticity_score || 0), 0);
+        setAvgScore(sum / updatedPosts.length);
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -98,6 +111,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      profileLoadingRef.current = false;
     }
   };
 
