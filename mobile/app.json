@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Guised Up",
+    "slug": "guised-up",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
