@@ -6,13 +6,13 @@
 [![Stack: PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20%2B%20pgvector-336791?logo=postgresql)](https://www.postgresql.org)
 [![Stack: Docker](https://img.shields.io/badge/Environment-Docker%20Compose-2496ed?logo=docker)](https://www.docker.com)
 
-Guised Up is a modern social platform designed to help people show up authentically online. By eliminating standard popularity constructs—such as follower counts, public likes, shares, or comment volume—the platform shifts focus entirely to genuine human connection. 
+Guised Up is a modern social platform designed to help people show up authentically online. By eliminating standard popularity constructs—such as follower counts, public likes, shares, or comment volume—the platform shifts focus entirely to genuine human connection.
 
 This repository contains the complete full-stack implementation, including the React Native mobile client, Laravel API backend, FastAPI embedding microservice, PostgreSQL/pgvector database setup, and a collection of optimized raw SQL queries.
 
 ---
 
-## 🌟 Core Product Features
+## Core Product Features
 
 1. **The "RealConnections" Feed:**
    A personalized, multi-signal feed that ranks posts without engagement bias. The ranking score ($0.0$ to $1.0$) is calculated server-side based on four signals:
@@ -22,7 +22,7 @@ This repository contains the complete full-stack implementation, including the R
    - **Time Decay (15%):** Applies an exponential decay with a 7-day half-life to keep the feed fresh without sacrificing relevance.
 
 2. **Semantic Natural Language Search:**
-   Enables users to search concepts or feelings conceptually (e.g., *"honest thoughts about technology"* or *"nature moments"*) rather than relying on exact keyword matching. Powered by 64-dimensional Google Gemini embeddings indexed in PostgreSQL via `HNSW`.
+   Enables users to search concepts or feelings conceptually (e.g., _"honest thoughts about technology"_ or _"nature moments"_) rather than relying on exact keyword matching. Powered by 64-dimensional Google Gemini embeddings indexed in PostgreSQL via `HNSW`.
 
 3. **Authenticity Quality Pills:**
    The mobile client analyzes the server's authenticity score and presents it as qualitative markers rather than raw statistics:
@@ -36,7 +36,7 @@ This repository contains the complete full-stack implementation, including the R
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 ├── backend/                   # Laravel 11 core backend API
@@ -58,7 +58,7 @@ This repository contains the complete full-stack implementation, including the R
 
 ---
 
-## 🛠️ System Architecture
+## System Architecture
 
 ```mermaid
 flowchart LR
@@ -74,10 +74,12 @@ For a detailed analysis of architectural decisions, database index optimizations
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### 1. Prerequisites
+
 Ensure you have the following installed on your local machine:
+
 - **Docker & Docker Compose**
 - **Composer** (for PHP dependencies)
 - **Node.js & npm** (for React Native)
@@ -92,10 +94,12 @@ Ensure you have the following installed on your local machine:
    cd backend
    ```
 2. Copy the environment template and configure your parameters:
+
    ```bash
    cp .env.example .env
    ```
-   *Note: If you have a Google Gemini API Key, set it in your `.env` as `GEMINI_API_KEY`. If not, the FastAPI service will gracefully fall back to a deterministic 64-dimensional local hashing algorithm for vector searches.*
+
+   _Note: If you have a Google Gemini API Key, set it in your `.env` as `GEMINI_API_KEY`. If not, the FastAPI service will gracefully fall back to a deterministic 64-dimensional local hashing algorithm for vector searches._
 
 3. Spin up PostgreSQL and the FastAPI embedding service using Docker:
    ```bash
@@ -134,33 +138,35 @@ Ensure you have the following installed on your local machine:
    ```bash
    npx expo start
    ```
-   *Press `a` to run on an Android Emulator, `i` to run on an iOS Simulator, or scan the QR code using the Expo Go app on your physical device.*
+   _Press `a` to run on an Android Emulator, `i` to run on an iOS Simulator, or scan the QR code using the Expo Go app on your physical device._
 
 ---
 
 ### 4. Running Backend Tests
 
 To verify that the database connections, embeddings, and ranking algorithms function as expected, execute the test suite in the `backend` directory:
+
 ```bash
 php artisan test
 ```
 
 ---
 
-## 👥 Seeded Demo Accounts
+## Seeded Demo Accounts
 
 You can log in to the mobile application using the following pre-seeded test accounts:
 
-| Email | Password | Role |
-| :--- | :--- | :--- |
-| **maya@guisedup.test** | `password` | Seeker / Authenticity Advocate |
-| **arjun@guisedup.test** | `password` | Creator / Tech Blogger |
+| Email                   | Password   | Role                           |
+| :---------------------- | :--------- | :----------------------------- |
+| **maya@guisedup.test**  | `password` | Seeker / Authenticity Advocate |
+| **arjun@guisedup.test** | `password` | Creator / Tech Blogger         |
 
 ---
 
-## 📊 SQL Analytics Challenges
+## SQL Analytics Challenges
 
 The assignment raw SQL challenges are solved and structured in the [queries.sql](file:///c:/Users/ssaaaadd/Documents/GuisedUp-Assignment/sql/queries.sql) file. These queries answer:
+
 - **D1:** Top 10 most active users in the last 7 days based on total interactions received.
 - **D2:** User-specific feed showing posts from their top interactors over the last 30 days.
 - **D3:** Identifying popular "read-only" posts (posts with over 100 views but 0 reactions).
@@ -168,9 +174,10 @@ The assignment raw SQL challenges are solved and structured in the [queries.sql]
 
 ---
 
-## 🤖 AI-Augmented Workflow
+## AI-Augmented Workflow
 
 This project was built following an AI-augmented workflow using agentic coding assistance. AI tools were utilized to:
+
 1. **Scaffold Boilerplate:** Set up initial Laravel migrations, routing files, and React Native style templates.
 2. **Refine Ranking Math:** Prototype the mathematical scoring curves for relationship depth (logarithmic normalization) and time decay (half-life decay).
 3. **Draft the Authenticity Heuristic:** Iterate on character matching and regex patterns for link detection, hashtag counting, and case-sensitive checks in PHP.
